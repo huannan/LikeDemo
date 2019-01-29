@@ -20,24 +20,33 @@ import android.view.animation.PathInterpolator;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 
+import java.util.Random;
 import java.util.Stack;
 
-public class LikeFrameLayout extends FrameLayout {
+public class PraiseFrameLayout extends FrameLayout {
 
-    public static final String TAG = LikeFrameLayout.class.getSimpleName();
-    private static final int MAX_LIKE_IMAGE_VIEW_NUM = 5;
+    public static final String TAG = PraiseFrameLayout.class.getSimpleName();
+    private static final int PRAISE_IMAGE_MAX_NUM = 5;
+    // 随机的旋转角度数组
+    private static final float[] PRAISE_IMAGE_ROTATION = {-30, -20, 0, 20, 30};
+    // 是否需要旋转角度
+    private static boolean PRAISE_IMAGE_IS_NEED_ROTATION = false;
+    // 触摸点相对于图片宽高的百分比
+    private static final float PRAISE_IMAGE_PERCENT_X = 0.5F;
+    private static final float PRAISE_IMAGE_PERCENT_Y = 0.8F;
     private GestureDetector mGestureDetector;
-    private Stack<ImageView> mLikeImageViewStack;
+    private Stack<ImageView> mPraiseImageViewStack;
+    private Random mPraiseRandom;
 
-    public LikeFrameLayout(@NonNull Context context) {
+    public PraiseFrameLayout(@NonNull Context context) {
         this(context, null);
     }
 
-    public LikeFrameLayout(@NonNull Context context, @Nullable AttributeSet attrs) {
+    public PraiseFrameLayout(@NonNull Context context, @Nullable AttributeSet attrs) {
         this(context, attrs, 0);
     }
 
-    public LikeFrameLayout(@NonNull Context context, @Nullable AttributeSet attrs, int defStyleAttr) {
+    public PraiseFrameLayout(@NonNull Context context, @Nullable AttributeSet attrs, int defStyleAttr) {
         super(context, attrs, defStyleAttr);
         init(context);
 
@@ -45,36 +54,37 @@ public class LikeFrameLayout extends FrameLayout {
 
     private void init(Context context) {
         mGestureDetector = new GestureDetector(context, new OnDoubleClickGestureListener());
+        mPraiseRandom = new Random();
     }
 
-    private void initLikeImageViewStack() {
-        if (mLikeImageViewStack == null) {
-            mLikeImageViewStack = new Stack<>();
-            for (int i = 0; i < MAX_LIKE_IMAGE_VIEW_NUM; i++) {
-                ImageView likeImageView = new ImageView(getContext());
-                likeImageView.setImageResource(R.drawable.mz_praise_red);
-                mLikeImageViewStack.push(likeImageView);
+    private void initPraiseImageViewStack() {
+        if (mPraiseImageViewStack == null) {
+            mPraiseImageViewStack = new Stack<>();
+            for (int i = 0; i < PRAISE_IMAGE_MAX_NUM; i++) {
+                ImageView view = new ImageView(getContext());
+                view.setImageResource(R.drawable.mz_praise_red);
+                mPraiseImageViewStack.push(view);
             }
         }
     }
 
     private void startLikeAnimation(int x, int y) {
 
-        initLikeImageViewStack();
+//        initPraiseImageViewStack();
 
         //取出栈的元素
-        if (mLikeImageViewStack.empty()) {
-            Log.e(TAG, "栈已经为空了，MAX_LIKE_IMAGE_VIEW_NUM需要增加");
-            return;
-        }
-        final ImageView likeImageView = mLikeImageViewStack.pop();
-//        final ImageView likeImageView = new ImageView(getContext());
+//        if (mPraiseImageViewStack.empty()) {
+//            Log.e(TAG, "栈已经为空了，MAX_LIKE_IMAGE_VIEW_NUM需要增加");
+//            return;
+//        }
+//        final ImageView praiseImageView = mPraiseImageViewStack.pop();
+        final ImageView praiseImageView = new ImageView(getContext());
 
         // 添加到布局当中
-        addLikeImageView(x, y, likeImageView);
+        addPraiseImageView(x, y, praiseImageView);
 
         // 创建动画
-        AnimatorSet set = createLikeAnimatorSet(likeImageView);
+        AnimatorSet set = createPraiseAnimatorSet(praiseImageView);
 
         // 开始动画
         set.start();
@@ -87,31 +97,53 @@ public class LikeFrameLayout extends FrameLayout {
             @Override
             public void onAnimationEnd(Animator animation) {
                 // 动画结束进行移除操作
-                removeView(likeImageView);
+                removeView(praiseImageView);
                 // 重新添加到栈当中
-                likeImageView.setScaleX(1.0F);
-                likeImageView.setScaleY(1.0F);
-                likeImageView.setAlpha(1.0F);
-                mLikeImageViewStack.push(likeImageView);
+//                praiseImageView.setScaleX(1.0F);
+//                praiseImageView.setScaleY(1.0F);
+//                praiseImageView.setAlpha(1.0F);
+//                mPraiseImageViewStack.push(praiseImageView);
             }
         });
     }
 
-    private void addLikeImageView(int x, int y, ImageView view) {
+    private void addPraiseImageView(int x, int y, ImageView view) {
         view.setImageResource(R.drawable.mz_praise_red);
         FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT
         );
 
+        // 获取图片宽高
+        view.measure(View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
+                View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
+        int width = view.getMeasuredWidth();
+        int height = view.getMeasuredHeight();
+
         //位置需要根据图片宽高微调/边框微调
-        params.leftMargin = x;
-        params.topMargin = y;
+        params.leftMargin = (int) (x - width * PRAISE_IMAGE_PERCENT_X);
+        params.topMargin = (int) (y - height * PRAISE_IMAGE_PERCENT_Y);
+        if (params.leftMargin < 0) {
+            params.leftMargin = 0;
+        }
+        if (params.leftMargin > Utils.getDisplayWidth() - width) {
+            params.leftMargin = Utils.getDisplayWidth() - width;
+        }
+        if (params.topMargin < 0) {
+            params.topMargin = 0;
+        }
+        if (params.topMargin > Utils.getDisplayHeight() - height) {
+            params.topMargin = Utils.getDisplayHeight() - height;
+        }
+
         addView(view, params);
     }
 
     @SuppressLint("NewApi")
-    private AnimatorSet createLikeAnimatorSet(final ImageView view) {
+    private AnimatorSet createPraiseAnimatorSet(final ImageView view) {
         AnimatorSet set = new AnimatorSet();
+
+        ObjectAnimator rotation = ObjectAnimator.ofFloat(view, "rotation", PRAISE_IMAGE_ROTATION[mPraiseRandom.nextInt(4)]);
+        rotation.setDuration(0);
 
         PropertyValuesHolder holderX1 = PropertyValuesHolder.ofFloat("scaleX", 0.0F, 1.4F);
         PropertyValuesHolder holderY1 = PropertyValuesHolder.ofFloat("scaleY", 0.0F, 1.4F);
@@ -133,10 +165,13 @@ public class LikeFrameLayout extends FrameLayout {
 
         final ObjectAnimator alpha = ObjectAnimator.ofInt(view, "alpha", 255, 0);
         alpha.setDuration(480L);
-        //alpha.setStartDelay(560L);
         alpha.setInterpolator(new PathInterpolator(0.33F, 0.0F, 0.67F, 1.0F));
 
-        set.playSequentially(scare1, scare2, scare3, alpha);
+        if (PRAISE_IMAGE_IS_NEED_ROTATION) {
+            set.playSequentially(rotation, scare1, scare2, scare3, alpha);
+        } else {
+            set.playSequentially(scare1, scare2, scare3, alpha);
+        }
 
         return set;
     }
@@ -166,9 +201,9 @@ public class LikeFrameLayout extends FrameLayout {
     protected void onDetachedFromWindow() {
         super.onDetachedFromWindow();
         // 清空，防止内存泄漏
-        if (mLikeImageViewStack != null) {
-            mLikeImageViewStack.clear();
-            mLikeImageViewStack = null;
-        }
+//        if (mPraiseImageViewStack != null) {
+//            mPraiseImageViewStack.clear();
+//            mPraiseImageViewStack = null;
+//        }
     }
 }
